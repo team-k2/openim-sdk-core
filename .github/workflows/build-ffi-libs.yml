@@ -1,0 +1,362 @@
+name: Build FFI Libraries for All Platforms
+
+on:
+  push:
+    branches: [ main, develop ]
+  pull_request:
+    branches: [ main ]
+  workflow_dispatch:  # 允許手動觸發
+
+env:
+  GO_VERSION: '1.21'
+  ANDROID_API_LEVEL: 21
+
+jobs:
+  build-ios:
+    name: Build iOS Framework
+    runs-on: macos-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      - name: Setup Go
+        uses: actions/setup-go@v4
+        with:
+          go-version: ${{ env.GO_VERSION }}
+
+      - name: Setup Xcode
+        uses: maxim-lobanov/setup-xcode@v1
+        with:
+          xcode-version: latest-stable
+
+      - name: Install gomobile
+        run: |
+          go install golang.org/x/mobile/cmd/gomobile@latest
+          go install golang.org/x/mobile/cmd/gobind@latest
+          export PATH=$PATH:$(go env GOPATH)/bin
+          gomobile init
+
+      - name: Build iOS Framework
+        run: |
+          export PATH=$PATH:$(go env GOPATH)/bin
+          gomobile bind -v \
+            -target=ios \
+            -o output/OpenIMCore.xcframework \
+            -ldflags="-s -w" \
+            ./open_im_sdk ./open_im_sdk_callback
+
+      - name: Upload iOS Framework
+        uses: actions/upload-artifact@v3
+        with:
+          name: ios-framework
+          path: output/OpenIMCore.xcframework
+
+  build-android:
+    name: Build Android AAR
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      - name: Setup Go
+        uses: actions/setup-go@v4
+        with:
+          go-version: ${{ env.GO_VERSION }}
+
+      - name: Setup Java
+        uses: actions/setup-java@v3
+        with:
+          java-version: '11'
+          distribution: 'temurin'
+
+      - name: Setup Android SDK
+        uses: android-actions/setup-android@v2
+
+      - name: Install gomobile
+        run: |
+          go install golang.org/x/mobile/cmd/gomobile@latest
+          go install golang.org/x/mobile/cmd/gobind@latest
+          export PATH=$PATH:$(go env GOPATH)/bin
+          gomobile init
+
+      - name: Build Android AAR
+        run: |
+          export PATH=$PATH:$(go env GOPATH)/bin
+          gomobile bind -v \
+            -target=android \
+            -androidapi ${{ env.ANDROID_API_LEVEL }} \
+            -o output/openim-sdk.aar \
+            -ldflags="-s -w" \
+            ./open_im_sdk ./open_im_sdk_callback
+
+      - name: Upload Android AAR
+        uses: actions/upload-artifact@v3
+        with:
+          name: android-aar
+          path: output/openim-sdk.aar
+
+  build-macos:
+    name: Build macOS Library
+    runs-on: macos-latest
+    strategy:
+      matrix:
+        arch: [amd64, arm64]
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      - name: Setup Go
+        uses: actions/setup-go@v4
+        with:
+          go-version: ${{ env.GO_VERSION }}
+
+      - name: Create clib wrapper
+        run: |
+          mkdir -p cmd/clib
+          cat > cmd/clib/main.go << 'EOF'
+          package main
+          import "C"
+          import (
+              _ "github.com/openimsdk/openim-sdk-core/v3/open_im_sdk"
+              _ "github.com/openimsdk/openim-sdk-core/v3/open_im_sdk_callback"
+          )
+          //export InitSDK
+          func InitSDK() {}
+          func main() {}
+          EOF
+
+      - name: Build macOS Library
+        run: |
+          GOARCH=${{ matrix.arch }} go build \
+            -buildmode=c-shared \
+            -ldflags="-s -w" \
+            -o output/libopenim_sdk_${{ matrix.arch }}.dylib \
+            ./cmd/clib
+
+      - name: Upload macOS Library
+        uses: actions/upload-artifact@v3
+        with:
+          name: macos-${{ matrix.arch }}-library
+          path: output/libopenim_sdk_${{ matrix.arch }}.dylib
+
+  build-macos-universal:
+    name: Create macOS Universal Binary
+    runs-on: macos-latest
+    needs: build-macos
+    steps:
+      - name: Download AMD64 Library
+        uses: actions/download-artifact@v3
+        with:
+          name: macos-amd64-library
+          path: ./amd64
+
+      - name: Download ARM64 Library
+        uses: actions/download-artifact@v3
+        with:
+          name: macos-arm64-library
+          path: ./arm64
+
+      - name: Create Universal Binary
+        run: |
+          lipo -create \
+            ./amd64/libopenim_sdk_amd64.dylib \
+            ./arm64/libopenim_sdk_arm64.dylib \
+            -output libopenim_sdk.dylib
+
+      - name: Upload Universal Binary
+        uses: actions/upload-artifact@v3
+        with:
+          name: macos-universal-library
+          path: libopenim_sdk.dylib
+
+  build-windows:
+    name: Build Windows DLL
+    runs-on: windows-latest
+    strategy:
+      matrix:
+        arch: [amd64, arm64]
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      - name: Setup Go
+        uses: actions/setup-go@v4
+        with:
+          go-version: ${{ env.GO_VERSION }}
+
+      - name: Setup MinGW
+        uses: egor-tensin/setup-mingw@v2
+        with:
+          platform: x64
+
+      - name: Create clib wrapper
+        shell: powershell
+        run: |
+          New-Item -ItemType Directory -Force -Path cmd\clib
+          @'
+          package main
+          import "C"
+          import (
+              _ "github.com/openimsdk/openim-sdk-core/v3/open_im_sdk"
+              _ "github.com/openimsdk/openim-sdk-core/v3/open_im_sdk_callback"
+          )
+          //export InitSDK
+          func InitSDK() {}
+          func main() {}
+          '@ | Out-File -FilePath cmd\clib\main.go -Encoding UTF8
+
+      - name: Build Windows DLL
+        run: |
+          set CGO_ENABLED=1
+          set GOARCH=${{ matrix.arch }}
+          go build -buildmode=c-shared -ldflags="-s -w" -o output\openim_sdk_${{ matrix.arch }}.dll .\cmd\clib
+
+      - name: Upload Windows DLL
+        uses: actions/upload-artifact@v3
+        with:
+          name: windows-${{ matrix.arch }}-dll
+          path: output\openim_sdk_${{ matrix.arch }}.dll
+
+  build-linux:
+    name: Build Linux Library
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        arch: [amd64, arm64]
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      - name: Setup Go
+        uses: actions/setup-go@v4
+        with:
+          go-version: ${{ env.GO_VERSION }}
+
+      - name: Install cross-compile tools
+        if: matrix.arch == 'arm64'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y gcc-aarch64-linux-gnu
+
+      - name: Create clib wrapper
+        run: |
+          mkdir -p cmd/clib
+          cat > cmd/clib/main.go << 'EOF'
+          package main
+          import "C"
+          import (
+              _ "github.com/openimsdk/openim-sdk-core/v3/open_im_sdk"
+              _ "github.com/openimsdk/openim-sdk-core/v3/open_im_sdk_callback"
+          )
+          //export InitSDK
+          func InitSDK() {}
+          func main() {}
+          EOF
+
+      - name: Build Linux Library
+        run: |
+          if [ "${{ matrix.arch }}" = "arm64" ]; then
+            export CC=aarch64-linux-gnu-gcc
+          fi
+          GOARCH=${{ matrix.arch }} CGO_ENABLED=1 go build \
+            -buildmode=c-shared \
+            -ldflags="-s -w" \
+            -o output/libopenim_sdk_${{ matrix.arch }}.so \
+            ./cmd/clib
+
+      - name: Upload Linux Library
+        uses: actions/upload-artifact@v3
+        with:
+          name: linux-${{ matrix.arch }}-library
+          path: output/libopenim_sdk_${{ matrix.arch }}.so
+
+  create-release:
+    name: Create Release Package
+    runs-on: ubuntu-latest
+    needs: [build-ios, build-android, build-macos-universal, build-windows, build-linux]
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    steps:
+      - name: Download all artifacts
+        uses: actions/download-artifact@v3
+        with:
+          path: ./artifacts
+
+      - name: Create release structure
+        run: |
+          mkdir -p release/{ios,android,macos,windows,linux}
+
+          # iOS
+          if [ -d "artifacts/ios-framework" ]; then
+            cp -r artifacts/ios-framework/* release/ios/
+          fi
+
+          # Android
+          if [ -f "artifacts/android-aar/openim-sdk.aar" ]; then
+            cp artifacts/android-aar/openim-sdk.aar release/android/
+          fi
+
+          # macOS
+          if [ -f "artifacts/macos-universal-library/libopenim_sdk.dylib" ]; then
+            cp artifacts/macos-universal-library/libopenim_sdk.dylib release/macos/
+          fi
+
+          # Windows
+          for arch in amd64 arm64; do
+            if [ -f "artifacts/windows-${arch}-dll/openim_sdk_${arch}.dll" ]; then
+              cp artifacts/windows-${arch}-dll/openim_sdk_${arch}.dll release/windows/
+            fi
+          done
+
+          # Linux
+          for arch in amd64 arm64; do
+            if [ -f "artifacts/linux-${arch}-library/libopenim_sdk_${arch}.so" ]; then
+              cp artifacts/linux-${arch}-library/libopenim_sdk_${arch}.so release/linux/
+            fi
+          done
+
+      - name: Create README
+        run: |
+          cat > release/README.md << 'EOF'
+          # OpenIM SDK Core FFI Libraries
+
+          ## Platform Support
+
+          | Platform | Architecture | File |
+          |----------|-------------|------|
+          | iOS | arm64 | `ios/OpenIMCore.xcframework` |
+          | Android | armeabi-v7a, arm64-v8a, x86_64 | `android/openim-sdk.aar` |
+          | macOS | Universal (x86_64 + arm64) | `macos/libopenim_sdk.dylib` |
+          | Windows | x64 | `windows/openim_sdk_amd64.dll` |
+          | Windows | ARM64 | `windows/openim_sdk_arm64.dll` |
+          | Linux | x64 | `linux/libopenim_sdk_amd64.so` |
+          | Linux | ARM64 | `linux/libopenim_sdk_arm64.so` |
+
+          ## Integration
+
+          See [BUILD_GUIDE.md](https://github.com/OpenIMSDK/Open-IM-SDK-Core/blob/main/docs/BUILD_GUIDE.md) for integration instructions.
+
+          ## Version
+
+          Build Date: $(date -u +"%Y-%m-%d %H:%M:%S UTC")
+          Commit: ${{ github.sha }}
+          EOF
+
+      - name: Create zip archive
+        run: |
+          cd release
+          zip -r ../openim-sdk-ffi-libs.zip .
+
+      - name: Upload release package
+        uses: actions/upload-artifact@v3
+        with:
+          name: openim-sdk-ffi-libs
+          path: openim-sdk-ffi-libs.zip
+
+      - name: Create GitHub Release
+        if: startsWith(github.ref, 'refs/tags/')
+        uses: softprops/action-gh-release@v1
+        with:
+          files: openim-sdk-ffi-libs.zip
+          generate_release_notes: true
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

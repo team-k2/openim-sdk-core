@@ -228,3 +228,25 @@ func ChangeInputStates(callback open_im_sdk_callback.Base, operationID string, c
 func GetInputStates(callback open_im_sdk_callback.Base, operationID string, conversationID string, userID string) {
 	call(callback, operationID, IMUserContext.Conversation().GetInputStates, conversationID, userID)
 }
+
+// Message Edit Functions - 消息編輯功能
+
+// EditMessage 編輯消息
+func EditMessage(callback open_im_sdk_callback.Base, operationID string, conversationID string, seq int64, newContent string, editReason string) {
+	call(callback, operationID, IMUserContext.Conversation().EditMessage, conversationID, seq, newContent, editReason)
+}
+
+// ValidateEditPermission 驗證編輯權限
+func ValidateEditPermission(callback open_im_sdk_callback.Base, operationID string, conversationID string, seq int64) {
+	call(callback, operationID, IMUserContext.Conversation().ValidateEditPermission, conversationID, seq)
+}
+
+// GetMessageEditHistory 獲取消息編輯歷史
+func GetMessageEditHistory(callback open_im_sdk_callback.Base, operationID string, conversationID string, seq int64) {
+	call(callback, operationID, IMUserContext.Conversation().GetMessageEditHistory, conversationID, seq)
+}
+
+// GetEditableMessages 獲取可編輯消息列表
+func GetEditableMessages(callback open_im_sdk_callback.Base, operationID string, conversationID string, pageNumber int32, showNumber int32) {
+	call(callback, operationID, IMUserContext.Conversation().GetEditableMessages, conversationID, pageNumber, showNumber)
+}

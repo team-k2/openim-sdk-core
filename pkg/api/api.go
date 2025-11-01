@@ -9,6 +9,7 @@ import (
 	"github.com/openimsdk/protocol/relation"
 	"github.com/openimsdk/protocol/third"
 	"github.com/openimsdk/protocol/user"
+	msg_edit "github.com/openimsdk/openim-sdk-core/v3/pkg/proto/msg_edit"
 )
 
 var (
@@ -53,6 +54,12 @@ var (
 	SetConversationHasReadSeq        = newApi[msg.SetConversationHasReadSeqReq, msg.SetConversationHasReadSeqResp]("/msg/set_conversation_has_read_seq")
 	SendMsg                          = newApi[msg.SendMsgReq, msg.SendMsgResp]("/msg/send_msg")
 	GetServerTime                    = newApi[msg.GetServerTimeReq, msg.GetServerTimeResp]("/msg/get_server_time")
+
+	// Message Edit APIs
+	EditMessage            = newApi[msg_edit.EditMessageReq, msg_edit.EditMessageResp]("/msg/edit_msg")
+	ValidateEditPermission = newApi[msg_edit.ValidateEditPermissionReq, msg_edit.ValidateEditPermissionResp]("/msg/validate_edit_permission")
+	GetMessageEditHistory  = newApi[msg_edit.GetMessageEditHistoryReq, msg_edit.GetMessageEditHistoryResp]("/msg/get_msg_edit_history")
+	GetEditableMessages    = newApi[msg_edit.GetEditableMessagesReq, msg_edit.GetEditableMessagesResp]("/msg/get_editable_msgs")
 )
 
 var (

@@ -5,6 +5,7 @@ import (
 
 	"github.com/openimsdk/openim-sdk-core/v3/pkg/api"
 	"github.com/openimsdk/openim-sdk-core/v3/pkg/cliconf"
+	msg_edit "github.com/openimsdk/openim-sdk-core/v3/pkg/proto/msg_edit"
 	pbConversation "github.com/openimsdk/protocol/conversation"
 	"github.com/openimsdk/protocol/jssdk"
 	pbMsg "github.com/openimsdk/protocol/msg"
@@ -81,4 +82,40 @@ func (c *Conversation) GetActiveConversations(ctx context.Context) ([]*jssdk.Con
 	}
 	req := &jssdk.GetActiveConversationsReq{OwnerUserID: c.loginUserID, Count: int64(conf.ConversationActiveNum)}
 	return api.ExtractField(ctx, api.GetActiveConversation.Invoke, req, (*jssdk.GetActiveConversationsResp).GetConversations)
+}
+
+// Message Edit APIs
+func (c *Conversation) editMessageOnServer(ctx context.Context, conversationID string, seq int64, newContent, editReason string) error {
+	req := &msg_edit.EditMessageReq{
+		ConversationId: conversationID,
+		Seq:            seq,
+		NewContent:     newContent,
+		EditReason:     editReason,
+	}
+	return api.EditMessage.Execute(ctx, req)
+}
+
+func (c *Conversation) validateEditPermissionOnServer(ctx context.Context, conversationID string, seq int64) (*msg_edit.ValidateEditPermissionResp, error) {
+	req := &msg_edit.ValidateEditPermissionReq{
+		ConversationId: conversationID,
+		Seq:            seq,
+	}
+	return api.ValidateEditPermission.Invoke(ctx, req)
+}
+
+func (c *Conversation) getMessageEditHistoryFromServer(ctx context.Context, conversationID string, seq int64) (*msg_edit.GetMessageEditHistoryResp, error) {
+	req := &msg_edit.GetMessageEditHistoryReq{
+		ConversationId: conversationID,
+		Seq:            seq,
+	}
+	return api.GetMessageEditHistory.Invoke(ctx, req)
+}
+
+func (c *Conversation) getEditableMessagesFromServer(ctx context.Context, conversationID string, pageNumber, showNumber int32) (*msg_edit.GetEditableMessagesResp, error) {
+	req := &msg_edit.GetEditableMessagesReq{
+		ConversationId: conversationID,
+		PageNumber:     pageNumber,
+		ShowNumber:     showNumber,
+	}
+	return api.GetEditableMessages.Invoke(ctx, req)
 }

@@ -1,0 +1,156 @@
+syntax = "proto3";
+
+package openim.msg.edit;
+
+option go_package = "github.com/openimsdk/openim-sdk-core/v3/pkg/proto/msg_edit";
+
+// 消息編輯客戶端信息
+message MessageEditClientInfo {
+  int32 platform = 1;        // 編輯平台 ID
+  string app_version = 2;     // APP 版本
+  string ip_address = 3;      // IP 地址
+}
+
+// 編輯消息請求
+message EditMessageReq {
+  string conversation_id = 1;  // 會話 ID
+  int64 seq = 2;              // 消息序列號
+  string new_content = 3;      // 新的消息內容
+  string edit_reason = 4;      // 編輯原因（可選）
+  MessageEditClientInfo client_info = 5;  // 客戶端信息
+}
+
+// 編輯消息響應
+message EditMessageResp {
+  bool success = 1;                    // 是否成功
+  string message = 2;                  // 響應消息
+  EditedMessageInfo updated_message = 3; // 更新後的消息信息
+}
+
+// 編輯後的消息信息
+message EditedMessageInfo {
+  string conversation_id = 1;  // 會話 ID
+  int64 seq = 2;              // 消息序列號
+  string user_id = 3;         // 編輯用戶 ID
+  bool is_edited = 4;         // 是否已編輯
+  int32 edit_count = 5;       // 編輯次數
+  int64 edit_time = 6;        // 編輯時間（毫秒時間戳）
+  string last_edit_user_id = 7; // 最後編輯者 ID
+}
+
+// 消息編輯記錄
+message MessageEditRecord {
+  string edit_id = 1;                    // 編輯記錄 ID
+  int64 edit_time = 2;                   // 編輯時間
+  string edit_user_id = 3;               // 編輯者用戶 ID
+  string edit_user_name = 4;             // 編輯者用戶名
+  string old_content = 5;                // 編輯前內容
+  string new_content = 6;                // 編輯後內容
+  string edit_reason = 7;                // 編輯原因
+  MessageEditClientInfo client_info = 8; // 客戶端信息
+}
+
+// 獲取編輯歷史請求
+message GetMessageEditHistoryReq {
+  string conversation_id = 1; // 會話 ID
+  int64 seq = 2;              // 消息序列號
+}
+
+// 獲取編輯歷史響應
+message GetMessageEditHistoryResp {
+  bool success = 1;                          // 是否成功
+  string message = 2;                        // 響應消息
+  repeated MessageEditRecord edit_history = 3; // 編輯歷史記錄
+}
+
+// 驗證編輯權限請求
+message ValidateEditPermissionReq {
+  string conversation_id = 1; // 會話 ID
+  int64 seq = 2;              // 消息序列號
+}
+
+// 驗證編輯權限響應
+message ValidateEditPermissionResp {
+  bool success = 1;           // 是否成功
+  string message = 2;         // 響應消息
+  PermissionResult data = 3;  // 權限驗證結果
+}
+
+// 權限驗證結果
+message PermissionResult {
+  bool can_edit = 1;           // 是否可以編輯
+  string reason = 2;           // 不能編輯的原因（如果 can_edit 為 false）
+  int64 time_remaining = 3;    // 剩餘編輯時間（秒）
+  int32 edit_count_left = 4;   // 剩餘編輯次數
+}
+
+// 獲取可編輯消息請求
+message GetEditableMessagesReq {
+  string conversation_id = 1; // 會話 ID
+  int32 page_number = 2;      // 頁碼
+  int32 show_number = 3;      // 每頁數量
+}
+
+// 可編輯消息信息
+message EditableMessageInfo {
+  int64 seq = 1;                    // 消息序列號
+  string content = 2;               // 消息內容
+  int32 content_type = 3;           // 內容類型
+  int64 send_time = 4;              // 發送時間
+  bool is_edited = 5;               // 是否已編輯
+  int32 edit_count = 6;             // 編輯次數
+  int64 last_edit_time = 7;         // 最後編輯時間
+  string last_edit_user_id = 8;     // 最後編輯者 ID
+  string original_content = 9;      // 原始內容
+}
+
+// 分頁信息
+message PaginationInfo {
+  int32 page_number = 1;  // 當前頁碼
+  int32 show_number = 2;  // 每頁數量
+  int64 total = 3;        // 總數量
+}
+
+// 獲取可編輯消息響應
+message GetEditableMessagesResp {
+  bool success = 1;                              // 是否成功
+  string message = 2;                            // 響應消息
+  string conversation_id = 3;                    // 會話 ID
+  repeated EditableMessageInfo messages = 4;     // 可編輯消息列表
+  PaginationInfo pagination = 5;                 // 分頁信息
+}
+
+// 編輯通知數據
+message EditNotificationData {
+  string notification_type = 1;     // 通知類型（messageEdit）
+  string conversation_id = 2;       // 會話 ID
+  int64 seq = 3;                   // 消息序列號
+  int64 edit_time = 4;             // 編輯時間
+  string editor_user_id = 5;       // 編輯者用戶 ID
+  string new_content = 6;          // 新內容
+  bool is_edited = 7;              // 是否已編輯
+  int32 edit_count = 8;            // 編輯次數
+  string original_sender = 9;      // 原始發送者 ID
+  int32 msg_type = 10;             // 消息類型
+  string client_msg_id = 11;       // 客戶端消息 ID
+  string server_msg_id = 12;       // 服務器消息 ID
+  int64 create_time = 13;          // 創建時間
+  int64 send_time = 14;            // 發送時間
+  int32 session_type = 15;         // 會話類型
+  EditedMessageInfo updated_message = 16; // 完整的更新後消息數據
+}
+
+// 消息編輯服務定義
+service MessageEditService {
+  // 編輯消息
+  rpc EditMessage(EditMessageReq) returns (EditMessageResp);
+  
+  // 獲取消息編輯歷史
+  rpc GetMessageEditHistory(GetMessageEditHistoryReq) returns (GetMessageEditHistoryResp);
+  
+  // 驗證編輯權限
+  rpc ValidateEditPermission(ValidateEditPermissionReq) returns (ValidateEditPermissionResp);
+  
+  // 獲取可編輯消息列表
+  rpc GetEditableMessages(GetEditableMessagesReq) returns (GetEditableMessagesResp);
+}

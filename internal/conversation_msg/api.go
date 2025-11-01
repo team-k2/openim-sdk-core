@@ -783,6 +783,34 @@ func (c *Conversation) RevokeMessage(ctx context.Context, conversationID, client
 	return c.revokeOneMessage(ctx, conversationID, clientMsgID)
 }
 
+// EditMessage 編輯消息
+func (c *Conversation) EditMessage(ctx context.Context, conversationID string, seq int64, newContent, editReason string) error {
+	return c.editOneMessage(ctx, conversationID, seq, newContent, editReason)
+}
+
+// ValidateEditPermission 驗證編輯權限
+func (c *Conversation) ValidateEditPermission(ctx context.Context, conversationID string, seq int64) (bool, string, error) {
+	return c.validateEditPermission(ctx, conversationID, seq)
+}
+
+// GetMessageEditHistory 獲取消息編輯歷史
+func (c *Conversation) GetMessageEditHistory(ctx context.Context, conversationID string, seq int64) (string, error) {
+	history, err := c.getMessageEditHistory(ctx, conversationID, seq)
+	if err != nil {
+		return "", err
+	}
+	return utils.StructToJsonString(history), nil
+}
+
+// GetEditableMessages 獲取可編輯消息列表
+func (c *Conversation) GetEditableMessages(ctx context.Context, conversationID string, pageNumber, showNumber int32) (string, error) {
+	messages, err := c.getEditableMessages(ctx, conversationID, pageNumber, showNumber)
+	if err != nil {
+		return "", err
+	}
+	return utils.StructToJsonString(messages), nil
+}
+
 func (c *Conversation) TypingStatusUpdate(ctx context.Context, recvID, msgTip string) error {
 	return c.typingStatusUpdate(ctx, recvID, msgTip)
 }
