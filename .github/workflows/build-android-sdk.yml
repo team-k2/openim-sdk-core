@@ -55,6 +55,31 @@ jobs:
 
           echo "✅ gomobile initialized successfully"
 
+      - name: Debug bind package location
+        run: |
+          echo "========================================"
+          echo "Searching for bind package..."
+          echo "========================================"
+
+          echo "GOPATH: $(go env GOPATH)"
+          echo "GOMODCACHE: $(go env GOMODCACHE)"
+
+          echo ""
+          echo "Searching in GOPATH/pkg:"
+          find $(go env GOPATH)/pkg -name "bind" -type d 2>/dev/null || echo "Not found in GOPATH/pkg"
+
+          echo ""
+          echo "Searching in GOMODCACHE:"
+          find $(go env GOMODCACHE) -path "*/golang.org/x/mobile*/bind" -type d 2>/dev/null || echo "Not found in GOMODCACHE"
+
+          echo ""
+          echo "Listing mobile package versions:"
+          ls -la $(go env GOMODCACHE)/golang.org/x/mobile* 2>/dev/null || echo "No mobile packages found"
+
+          echo ""
+          echo "Checking if bind package exists in any mobile version:"
+          find $(go env GOMODCACHE) -path "*/mobile*/bind/*.go" 2>/dev/null | head -5 || echo "No bind .go files found"
+
       - name: Build Android SDK
         run: |
           go mod tidy
