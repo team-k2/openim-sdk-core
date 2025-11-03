@@ -49,7 +49,38 @@ jobs:
       - name: Initialize gomobile
         run: |
           export ANDROID_NDK_HOME=$ANDROID_HOME/ndk/25.2.9519653
-          gomobile init
+
+          echo "========================================"
+          echo "Running gomobile init..."
+          echo "========================================"
+          gomobile init -v
+
+          echo ""
+          echo "========================================"
+          echo "Verifying gomobile installation..."
+          echo "========================================"
+
+          # 檢查 Go 環境
+          echo "Go version:"
+          go version
+
+          echo ""
+          echo "Go env:"
+          go env GOPATH
+          go env GOMODCACHE
+
+          echo ""
+          echo "Checking for mobile package:"
+          find $(go env GOMODCACHE) -name "mobile" -type d 2>/dev/null | grep golang.org || echo "Not found in GOMODCACHE"
+
+          echo ""
+          echo "Checking gomobile tools:"
+          which gomobile
+          which gobind
+
+          echo ""
+          echo "Testing gobind:"
+          gobind -version || echo "gobind version check failed"
 
       - name: Build Android SDK
         run: |
