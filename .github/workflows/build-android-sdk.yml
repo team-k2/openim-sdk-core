@@ -48,7 +48,9 @@ jobs:
       - name: Initialize gomobile
         run: |
           export ANDROID_NDK_HOME=$ANDROID_HOME/ndk/25.2.9519653
-          gomobile init
+          # Skip gomobile init as it tries to reinstall latest gobind
+          # We already have the compatible version installed
+          echo "Using pre-installed gomobile and gobind"
 
       - name: Build Android SDK
         run: |
