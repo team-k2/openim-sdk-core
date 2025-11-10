@@ -6,9 +6,9 @@ import (
 	"time"
 
 	"github.com/openimsdk/openim-sdk-core/v3/pkg/constant"
-	msg_edit "github.com/openimsdk/openim-sdk-core/v3/pkg/proto/msg_edit"
 	"github.com/openimsdk/openim-sdk-core/v3/pkg/utils"
 	"github.com/openimsdk/openim-sdk-core/v3/sdk_struct"
+	pbMsg "github.com/openimsdk/protocol/msg"
 	"github.com/openimsdk/protocol/sdkws"
 	"github.com/openimsdk/tools/log"
 )
@@ -99,7 +99,7 @@ func (c *Conversation) validateEditPermission(ctx context.Context, conversationI
 }
 
 // getMessageEditHistory 獲取消息編輯歷史
-func (c *Conversation) getMessageEditHistory(ctx context.Context, conversationID string, seq int64) ([]*msg_edit.MessageEditRecord, error) {
+func (c *Conversation) getMessageEditHistory(ctx context.Context, conversationID string, seq int64) ([]*pbMsg.MessageEditRecord, error) {
 	resp, err := c.getMessageEditHistoryFromServer(ctx, conversationID, seq)
 	if err != nil {
 		return nil, err
@@ -109,7 +109,7 @@ func (c *Conversation) getMessageEditHistory(ctx context.Context, conversationID
 }
 
 // getEditableMessages 獲取可編輯的消息列表
-func (c *Conversation) getEditableMessages(ctx context.Context, conversationID string, pageNumber, showNumber int32) ([]*msg_edit.EditableMessageInfo, error) {
+func (c *Conversation) getEditableMessages(ctx context.Context, conversationID string, pageNumber, showNumber int32) ([]*pbMsg.EditableMessageInfo, error) {
 	resp, err := c.getEditableMessagesFromServer(ctx, conversationID, pageNumber, showNumber)
 	if err != nil {
 		return nil, err
@@ -120,7 +120,7 @@ func (c *Conversation) getEditableMessages(ctx context.Context, conversationID s
 
 // doEditMsg 處理編輯消息通知
 func (c *Conversation) doEditMsg(ctx context.Context, msg *sdkws.MsgData) error {
-	var editNotification msg_edit.EditNotificationData
+	var editNotification pbMsg.EditNotificationData
 
 	// 解析通知內容
 	if err := utils.UnmarshalNotificationElem(msg.Content, &editNotification); err != nil {
@@ -131,9 +131,9 @@ func (c *Conversation) doEditMsg(ctx context.Context, msg *sdkws.MsgData) error 
 	log.ZDebug(ctx, "received edit notification", "notification", &editNotification)
 
 	// 獲取被編輯的消息
-	editedMsg, err := c.db.GetMessageBySeq(ctx, editNotification.ConversationId, editNotification.Seq)
+	editedMsg, err := c.db.GetMessageBySeq(ctx, editNotification.ConversationID, editNotification.Seq)
 	if err != nil {
-		log.ZError(ctx, "GetMessageBySeq failed", err, "conversationID", editNotification.ConversationId, "seq", editNotification.Seq)
+		log.ZError(ctx, "GetMessageBySeq failed", err, "conversationID", editNotification.ConversationID, "seq", editNotification.Seq)
 		return err
 	}
 
@@ -142,7 +142,7 @@ func (c *Conversation) doEditMsg(ctx context.Context, msg *sdkws.MsgData) error 
 	editedMsg.Ex = "edited" // 標記為已編輯
 
 	// 更新本地數據庫
-	err = c.db.UpdateMessage(ctx, editNotification.ConversationId, editedMsg)
+	err = c.db.UpdateMessage(ctx, editNotification.ConversationID, editedMsg)
 	if err != nil {
 		log.ZError(ctx, "UpdateMessage failed", err)
 		return err
@@ -156,7 +156,7 @@ func (c *Conversation) doEditMsg(ctx context.Context, msg *sdkws.MsgData) error 
 		Content:     editNotification.NewContent,
 		ContentType: constant.Text, // 使用文本類型，添加編輯標記
 		SendTime:    editNotification.EditTime,
-		SendID:      editNotification.EditorUserId,
+		SendID:      editNotification.EditorUserID,
 		Ex:          "edited", // 標記為已編輯
 	}
 

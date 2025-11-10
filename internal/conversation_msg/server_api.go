@@ -5,7 +5,6 @@ import (
 
 	"github.com/openimsdk/openim-sdk-core/v3/pkg/api"
 	"github.com/openimsdk/openim-sdk-core/v3/pkg/cliconf"
-	msg_edit "github.com/openimsdk/openim-sdk-core/v3/pkg/proto/msg_edit"
 	pbConversation "github.com/openimsdk/protocol/conversation"
 	"github.com/openimsdk/protocol/jssdk"
 	pbMsg "github.com/openimsdk/protocol/msg"
@@ -86,8 +85,8 @@ func (c *Conversation) GetActiveConversations(ctx context.Context) ([]*jssdk.Con
 
 // Message Edit APIs
 func (c *Conversation) editMessageOnServer(ctx context.Context, conversationID string, seq int64, newContent, editReason string) error {
-	req := &msg_edit.EditMessageReq{
-		ConversationId: conversationID,
+	req := &pbMsg.EditMessageReq{
+		ConversationID: conversationID,
 		Seq:            seq,
 		NewContent:     newContent,
 		EditReason:     editReason,
@@ -95,25 +94,25 @@ func (c *Conversation) editMessageOnServer(ctx context.Context, conversationID s
 	return api.EditMessage.Execute(ctx, req)
 }
 
-func (c *Conversation) validateEditPermissionOnServer(ctx context.Context, conversationID string, seq int64) (*msg_edit.ValidateEditPermissionResp, error) {
-	req := &msg_edit.ValidateEditPermissionReq{
-		ConversationId: conversationID,
+func (c *Conversation) validateEditPermissionOnServer(ctx context.Context, conversationID string, seq int64) (*pbMsg.ValidateEditPermissionResp, error) {
+	req := &pbMsg.ValidateEditPermissionReq{
+		ConversationID: conversationID,
 		Seq:            seq,
 	}
 	return api.ValidateEditPermission.Invoke(ctx, req)
 }
 
-func (c *Conversation) getMessageEditHistoryFromServer(ctx context.Context, conversationID string, seq int64) (*msg_edit.GetMessageEditHistoryResp, error) {
-	req := &msg_edit.GetMessageEditHistoryReq{
-		ConversationId: conversationID,
+func (c *Conversation) getMessageEditHistoryFromServer(ctx context.Context, conversationID string, seq int64) (*pbMsg.GetMessageEditHistoryResp, error) {
+	req := &pbMsg.GetMessageEditHistoryReq{
+		ConversationID: conversationID,
 		Seq:            seq,
 	}
 	return api.GetMessageEditHistory.Invoke(ctx, req)
 }
 
-func (c *Conversation) getEditableMessagesFromServer(ctx context.Context, conversationID string, pageNumber, showNumber int32) (*msg_edit.GetEditableMessagesResp, error) {
-	req := &msg_edit.GetEditableMessagesReq{
-		ConversationId: conversationID,
+func (c *Conversation) getEditableMessagesFromServer(ctx context.Context, conversationID string, pageNumber, showNumber int32) (*pbMsg.GetEditableMessagesResp, error) {
+	req := &pbMsg.GetEditableMessagesReq{
+		ConversationID: conversationID,
 		PageNumber:     pageNumber,
 		ShowNumber:     showNumber,
 	}
